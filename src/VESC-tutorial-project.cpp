@@ -250,15 +250,21 @@ void impulse() {
 
   // Send to 90 deg and wait for 500ms
   if(time_running >= 1000 && time_running < 1500) {
-    // Serial.println("");
+    Serial.println("");
     vesc1.write(90.0f);
     return;
   }
 
+  /***** CAITLIN THE BELOW ISNT WORKING ******/
+
   // Send back to 0 deg and wait for 500 ms
   if(time_running >= 1500 && time_running < 2000) {
     // Serial.println("");
-    // digitalWrite(led,LOW);
+
+    // Without the above println, the digitalWrite DOES WORK
+    digitalWrite(led_pin,LOW);
+
+    // Without the above println, the vesc1.write DOES NOT WORK
     vesc1.write(180.0f);
     return;
   }
