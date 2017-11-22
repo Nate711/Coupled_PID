@@ -20,6 +20,9 @@
 #include "datatypes.h"
 #include "utils.h"
 
+// Doesn't work when my_msg is global
+// static CAN_message_t my_msg;
+
 /*************** PRIVATE METHODS ****************/
 
 /**
@@ -74,7 +77,6 @@ float VESC::normalized_to_vesc_angle(float normalized_angle) {
 // TODO: Doesn't seem to work? Motor will randomly turn off. Probably not resetting the timeout
 // TODO: Test pos -> norm_pos fix
 
-
 void VESC::_send_position(float pos) {
   float norm_pos = pos;
   utils_norm_angle(norm_pos);
@@ -82,9 +84,15 @@ void VESC::_send_position(float pos) {
   CAN_message_t my_msg;
   int MULTIPLIER = 1000000;
   my_msg.id = controller_channel_ID | ((int32_t) CAN_PACKET_SET_POS<<8);
-  my_msg.len = 8;
+  my_msg.len = 4;
   int32_t index = 0;
   buffer_append_int32(my_msg.buf,(int32_t)(norm_pos*MULTIPLIER),&index);
+
+  // for(int i=0;i<4;i++) {
+  //   Serial.print(my_msg.buf[i]);
+  //   Serial.print(" ");
+  // }
+  // Serial.println();
   /*
 	WACKO fix, doesn't work without the wait
 	*/
@@ -97,6 +105,8 @@ void VESC::_send_position(float pos) {
 /**
  * Sends current command to the VESC
  */
+// Making this global also doesn't work
+// CAN_message_t msg;
 void VESC::_send_current(float current) {
   CAN_message_t msg;
   int MULTIPLIER = 1000;
@@ -106,7 +116,7 @@ void VESC::_send_current(float current) {
 	msg.id = controller_channel_ID | ((int32_t)CAN_PACKET_SET_CURRENT << 8);
 	msg.len = 4; // 4 byte int
 
-	int32_t index=0;
+	int32_t index = 0;
 	buffer_append_int32(msg.buf, (int32_t)(current*MULTIPLIER), &index);
 
   /*
@@ -171,6 +181,7 @@ VESC::VESC(FlexCAN& cantx) : CANtx(cantx), pos_controller(0,0){
 
   vesc_angle = 0.0;
   true_degps = 0;
+
 }
 
 /**

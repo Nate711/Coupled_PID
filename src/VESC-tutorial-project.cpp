@@ -55,13 +55,15 @@ long running_timestamp;
 
 /********* CONSTANTS *********/
 
-// Send position commands at 200hz (1s / 5000us)
-const int UPDATE_PERIOD =  5000; // us
+// Send position commands at 500hz (1s / 2000us)
+const int UPDATE_PERIOD =  2000; // us
 // const int UPDATE_PERIOD =  10000; // us
 
 
 // built-in led pin
 int led_pin = 13;
+#define LED_ON digitalWrite(led_pin,HIGH)
+#define LED_OFF digitalWrite(led_pin,LOW)
 
 const float MAX_CURRENT = 8.0; // 30 amps seems the max
 
@@ -101,6 +103,7 @@ void transition_to_STAGING() {
   // Program specific resets
   reset_impulse();
 }
+
 /**
  * Process serial commands send from a computer
  */
@@ -174,7 +177,7 @@ void setup() {
 }
 
 void STAGING_STATE() {
-  vesc1.write_current(0.0f);
+  // vesc1.write_current(0.0f);
 }
 
 // Call this function in RUNNING_STATE to move the motor in a sinusoid
@@ -188,14 +191,12 @@ void sinusoid() {
   vesc1.write_pos_and_pid_gains(0.05, 0, 0.0005, motor_angle);
 }
 
-
 static bool impulse_started = false;
 static bool impulse_finished = false;
 static bool impulsed_printed_finish = false;
 
 void impulse_print_position() {
-  float pos = vesc1.read();
-  Serial.println(pos);
+  Serial.println(vesc1.read());
 }
 
 void reset_impulse() {
@@ -230,6 +231,7 @@ void impulse() {
   // Send zero current after the impulse is done
   if(time_running > 2000) {
     impulse_finished = true;
+    LED_ON;
     transition_to_ESTOP();
     return;
   }
@@ -238,31 +240,38 @@ void impulse() {
   // Print the motor position
 
   // CAITLIN: using this function makes it not work
-  impulse_print_position();
+  // impulse_print_position();
   // CAITLIN: Printing directly works
-  // Serial.println(vesc1.read());
+  // Does not work when Serial.print
+  Serial.println(vesc1.read());
 
   // Set 180.0 deg position and Wait 1 second to measure resting instability
   if (time_running < 1000) {
+    LED_OFF;
     vesc1.write(180.0f);
     return;
   }
 
   // Send to 90 deg and wait for 500ms
   if(time_running >= 1000 && time_running < 1500) {
-    Serial.println("");
+    LED_ON;
+    // Serial.println("");
     vesc1.write(90.0f);
     return;
   }
 
   /***** CAITLIN THE BELOW ISNT WORKING ******/
+  // THINGS TRIED
+  // Filling out 8 byte can message buffer instead of filling out first 4 bytes
+  // Printing out CAN message data in binary and making sure its not corrupted
+  // Can't make the CAN_messate_t variable global or static :(
 
   // Send back to 0 deg and wait for 500 ms
   if(time_running >= 1500 && time_running < 2000) {
     // Serial.println("");
 
-    // Without the above println, the digitalWrite DOES WORK
-    digitalWrite(led_pin,LOW);
+    // Without the above println, the LED_OFF which uses digitalWrite DOES WORK
+    LED_OFF;
 
     // Without the above println, the vesc1.write DOES NOT WORK
     vesc1.write(180.0f);
@@ -285,6 +294,7 @@ void RUNNING_STATE() {
 
 void ESTOP_STATE() {
   vesc1.write_current(0.0f);
+  delay(100);
 }
 
 void loop() {
