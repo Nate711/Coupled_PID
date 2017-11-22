@@ -35,9 +35,12 @@ FlexCAN CANTransceiver(500000,0,1,1);
 // The elapsedMicros type automatically increments itself every loop execution!
 elapsedMillis last_print_shit;
 
-// Variable to keep track of time since command to RM was sent
+// Variable to keep track of time since 100hz, 500hz, and 1000hz loops
+// were executed
 // The elapsedMicros type automatically increments itself every loop execution!
-elapsedMicros vesc1_time_since_command = 0;
+elapsedMicros elapsed_100HZ = 0;
+elapsedMicros elapsed_500HZ = 0;
+elapsedMicros elapsed_1000HZ = 0;
 
 // VESC motor objects
 VESC vesc1(CANTransceiver); // CAN flexcan
@@ -53,11 +56,17 @@ controller_state_machine controller_state = STAGING;
 // Keep track of when RUNNING was entered
 long running_timestamp;
 
+// Keep track of positio and gain targets
+struct vesc_pos_gain_command vesc_pos_gain_target = {0.0, 0.0, 0.0};
+
 /********* CONSTANTS *********/
 
 // Send position commands at 500hz (1s / 2000us)
-const int UPDATE_PERIOD =  2000; // us
+// const int UPDATE_PERIOD =  2000; // us
 // const int UPDATE_PERIOD =  10000; // us
+const int UPDATE_1000HZ = 1000; //us
+const int UPDATE_500HZ = 2000; //us
+const int UPDATE_100HZ = 10000; //us
 
 
 // built-in led pin
@@ -87,15 +96,26 @@ void print_shit() {
   }
 }
 
+/**
+ * Transition to RUNNING state
+ */
 void transition_to_running() {
   Serial.println("Transitioning to RUNNING");
   running_timestamp = millis();
   controller_state = RUNNING;
 }
+
+/**
+ * Transition to ESTOP state
+ */
 void transition_to_ESTOP() {
   Serial.println("Transitioning to ESTOP");
   controller_state = ESTOP;
 }
+
+/**
+ * Transition to STAGING state
+ */
 void transition_to_STAGING() {
   Serial.println("Transitioning to STAGING");
   controller_state = STAGING;
@@ -109,27 +129,58 @@ void transition_to_STAGING() {
  */
 void process_serial() {
   if(Serial.available()) {
-    char c = Serial.read();
+		// NOTE: message string variable will not include '\n' char
+		String message = Serial.readStringUntil('\n');
 
-    switch(c) {
-      // Send 's' over serial to permanently ESTOP
-      case 's':
-        transition_to_ESTOP();
-        break;
+		/***** G1 COMMAND ******/
+		// Send G1 X[pos as float] P[Kp as float] D[kd value as float] to command
+		// the teensy to send a position and pid gain command to the vesc
+		if(message[0] == 'G' && message[1] == '1') {
+			int x_index = message.indexOf('X');
+			int x_end = message.indexOf(' ',x_index);
+			String x_string = message.substring(x_index+1, x_end);
+
+			int p_index = message.indexOf('P');
+			int p_end = message.indexOf(' ',p_index);
+			String kp_string = message.substring(p_index+1, p_end);
+
+			int d_index = message.indexOf('D');
+			int d_end = message.indexOf(' ',d_index);
+			String kd_string = message.substring(d_index+1, d_end);
+
+			float x = x_string.toFloat();
+			float kp = kp_string.toFloat();
+			float kd = kd_string.toFloat();
+
+			update_pos_and_gain_target(x,kp,kd);
+
+			print_pos_gain_target();
+
+			return;
+		}
+
+		// Send 'e' to start encoder readings
+		if(message[0] == 'e') {
+			start_encoder_prints();
+		}
+		if(message[0] == '!' && message[1] == 'e') {
+			stop_encoder_prints();
+		}
+
+		// Send 's' over serial to permanently ESTOP
+		if(message[0] == 's') {
+      transition_to_ESTOP();
+		}
       // Send 'b' over serial to begin running if not in ESTOP mode
-      case 'b':
-        if(controller_state != ESTOP) {
-          transition_to_running();
-        }
-        break;
-      // Send 'r' over serial to reset this program's vars and restart
-      case 'r':
-        transition_to_STAGING();
-        break;
-
-      default:
-        break;
-    }
+    if(message[0] == 'b') {
+      if(controller_state != ESTOP) {
+        transition_to_running();
+      }
+		}
+    // Send 'r' over serial to reset this program's vars and restart
+    if(message[0] == 'r') {
+      transition_to_STAGING();
+		}
 
     // Clear the buffer after the first byte is read.
     // So don't send multiple commands at once and expect any but the first to be executed
@@ -154,10 +205,57 @@ void process_CAN_messages() {
   }
 }
 
+/**
+ * Initial state, Teensy boots into this state. Idles.
+ */
+void STAGING_STATE() {
+  // vesc1.write_current(0.0f);
+}
+
+/**
+ * Executes any user code and executes on Serial commands
+ */
+void RUNNING_STATE() {
+  // 1000Hz loop
+  if(elapsed_1000HZ > UPDATE_1000HZ) {
+    elapsed_1000HZ = 0;
+
+    encoder_printing();
+  }
+	// 500Hz loop
+	if(elapsed_500HZ > UPDATE_500HZ) {
+		elapsed_500HZ = 0;
+		// encoder_printing();
+	}
+	// 100Hz loop
+	if(elapsed_100HZ > UPDATE_100HZ) {
+		elapsed_100HZ = 0;
+
+		// impulse();
+    send_vesc_target(vesc1, vesc_pos_gain_target);
+	}
+}
+
+/**
+ * ESTOP: Stops motor in emergency
+ */
+void ESTOP_STATE() {
+  vesc1.write_current(0.0f);
+  long now = millis();
+	while(millis() - now < 100) {}
+}
+
+/**
+ * Called when Teensy boots
+ */
 void setup() {
   // Initialize CAN bus
   CANTransceiver.begin();
+
+	// Init Serial
+	Serial.begin(115200);
   Serial.println("CAN Transmitter Initialized");
+	Serial.setTimeout(2); // 2 ms timeout
 
   // Initialize "power on" led
   pinMode(led_pin, OUTPUT);
@@ -171,13 +269,104 @@ void setup() {
                   VESC1_OFFSET,
                   VESC1_DIRECTION,
                   MAX_CURRENT);
-
-  Serial.begin(115200);
-
 }
 
-void STAGING_STATE() {
-  // vesc1.write_current(0.0f);
+/**
+ * Called indefinitely
+ */
+void loop() {
+    // Process any CAN messages from the motor controllers
+    process_CAN_messages();
+
+    // IMPORTANT: read any commands sent by the computer
+    process_serial();
+
+    // IMPORTANT: for some reason the code doesn't work without this function call
+    // Probably has to do with a delay thing
+    // print_shit();
+
+    switch(controller_state) {
+      case STAGING:
+        STAGING_STATE();
+        break;
+      case RUNNING:
+        RUNNING_STATE();
+        break;
+      case ESTOP:
+        ESTOP_STATE();
+        break;
+      default:
+        ESTOP_STATE();
+        break;
+    }
+}
+
+
+/****** APPLICATION CODE ******/
+
+void print_pos_gain_target() {
+	Serial.print("x: ");
+	Serial.print(vesc_pos_gain_target.pos,1);
+	Serial.print("\tk_p: ");
+	Serial.print(vesc_pos_gain_target.k_p,3);
+	Serial.print("\tk_d: ");
+	Serial.println(vesc_pos_gain_target.k_d,4);
+}
+
+// For printing encoder readings
+static bool print_encoder_readings = false;
+
+/**
+ * Start printing vesc1 encoder readings to Serial
+ */
+void start_encoder_prints() {
+	print_encoder_readings = true;
+}
+
+/**
+ * Stop printing vesc1 encoder readings to Serial
+ */
+void stop_encoder_prints() {
+	print_encoder_readings = false;
+}
+
+/**
+ * Print encoder readings if print_encoder_readings is true
+ */
+void encoder_printing() {
+	if(print_encoder_readings) {
+		Serial.println(vesc1.read());
+	}
+}
+
+/**
+ * Update the global target variable with the given parameters. Constrain
+ * the gain constants to reasonable values:
+ * k_p = (0, 1.0)
+ * k_d = (0.0001, 0.01)
+ * @param pos: Target position [degrees]
+ * @param kp: New P gain
+ * @param kd: New D gain
+ */
+void update_pos_and_gain_target(float pos, float kp, float kd) {
+	kp = constrain(kp, 0.0, 1.0);
+	kd = constrain(kd, 0.0001, 0.01);
+
+	vesc_pos_gain_target.pos = pos;
+	vesc_pos_gain_target.k_p = kp;
+	vesc_pos_gain_target.k_d = kd;
+}
+
+/**
+ * Send a position and gain command to a VESC
+ * @param vesc: VESC reference
+ * @param comm: Position and gain struct command
+ */
+void send_vesc_target(VESC &vesc, struct vesc_pos_gain_command &comm) {
+	vesc.write_pos_and_pid_gains(comm.k_p,
+															 0.0,
+															 comm.k_d,
+															 comm.pos);
 }
 
 // Call this function in RUNNING_STATE to move the motor in a sinusoid
@@ -277,49 +466,4 @@ void impulse() {
     vesc1.write(180.0f);
     return;
   }
-}
-
-void RUNNING_STATE() {
-  /****** Send current messages to VESCs *******/
-  // Send position current commands at 200khz aka 5000 us per loop
-
-  // Send VESC 1 position command
-  if(vesc1_time_since_command > UPDATE_PERIOD) {
-    vesc1_time_since_command = 0;
-
-    impulse();
-  }
-  /****** End of sending current messages to VESCs *******/
-}
-
-void ESTOP_STATE() {
-  vesc1.write_current(0.0f);
-  delay(100);
-}
-
-void loop() {
-    // Process any CAN messages from the motor controllers
-    process_CAN_messages();
-
-    // IMPORTANT: read any commands sent by the computer
-    process_serial();
-
-    // IMPORTANT: for some reason the code doesn't work without this function call
-    // Probably has to do with a delay thing
-    // print_shit();
-
-    switch(controller_state) {
-      case STAGING:
-        STAGING_STATE();
-        break;
-      case RUNNING:
-        RUNNING_STATE();
-        break;
-      case ESTOP:
-        ESTOP_STATE();
-        break;
-      default:
-        ESTOP_STATE();
-        break;
-    }
 }
