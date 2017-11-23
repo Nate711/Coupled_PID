@@ -135,6 +135,7 @@ void process_serial() {
 		/***** G1 COMMAND ******/
 		// Send G1 X[pos as float] P[Kp as float] D[kd value as float] to command
 		// the teensy to send a position and pid gain command to the vesc
+    // TODO: Add defensive error catching stuff
 		if(message[0] == 'G' && message[1] == '1') {
 			int x_index = message.indexOf('X');
 			int x_end = message.indexOf(' ',x_index);
@@ -221,18 +222,20 @@ void RUNNING_STATE() {
     elapsed_1000HZ = 0;
 
     encoder_printing();
+		send_vesc_target(vesc1, vesc_pos_gain_target);
   }
 	// 500Hz loop
 	if(elapsed_500HZ > UPDATE_500HZ) {
 		elapsed_500HZ = 0;
 		// encoder_printing();
+
 	}
 	// 100Hz loop
 	if(elapsed_100HZ > UPDATE_100HZ) {
 		elapsed_100HZ = 0;
 
 		// impulse();
-    send_vesc_target(vesc1, vesc_pos_gain_target);
+    // send_vesc_target(vesc1, vesc_pos_gain_target);
 	}
 }
 
@@ -335,6 +338,8 @@ void stop_encoder_prints() {
  */
 void encoder_printing() {
 	if(print_encoder_readings) {
+		Serial.print(micros());
+		Serial.print(" ");
 		Serial.println(vesc1.read());
 	}
 }
