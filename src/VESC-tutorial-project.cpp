@@ -221,13 +221,15 @@ void RUNNING_STATE() {
   if(elapsed_1000HZ > UPDATE_1000HZ) {
     elapsed_1000HZ = 0;
 
-    encoder_printing();
-		send_vesc_target(vesc1, vesc_pos_gain_target);
+    // encoder_printing();
+		// send_vesc_target(vesc1, vesc_pos_gain_target);
   }
 	// 500Hz loop
 	if(elapsed_500HZ > UPDATE_500HZ) {
 		elapsed_500HZ = 0;
 		// encoder_printing();
+		encoder_printing();
+		send_vesc_target(vesc1, vesc_pos_gain_target);
 
 	}
 	// 100Hz loop
