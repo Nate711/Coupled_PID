@@ -74,10 +74,14 @@ int led_pin = 13;
 #define LED_ON digitalWrite(led_pin,HIGH)
 #define LED_OFF digitalWrite(led_pin,LOW)
 
+// Configuration
+int computer_BAUDRATE = 500000;
+
+// Unused when pos control is done on the VESC
 const float MAX_CURRENT = 8.0; // 30 amps seems the max
 
+// VESC1 settings
 const int8_t VESC1_CHANNEL_ID = 0;
-
 const float VESC1_OFFSET = -108; // 108
 const int VESC1_DIRECTION = -1;
 
@@ -130,7 +134,69 @@ void transition_to_STAGING() {
 void process_serial() {
   if(Serial.available()) {
 		// NOTE: message string variable will not include '\n' char
+		// TODO: change this code from blocking code to GOOD, nonblocking code
 		String message = Serial.readStringUntil('\n');
+
+		/**
+		 * // Example 3 - Receive with start- and end-markers
+
+const byte numChars = 32;
+char receivedChars[numChars];
+
+boolean newData = false;
+
+void setup() {
+    Serial.begin(9600);
+    Serial.println("<Arduino is ready>");
+}
+
+void loop() {
+    recvWithStartEndMarkers();
+    showNewData();
+}
+
+void recvWithStartEndMarkers() {
+    static boolean recvInProgress = false;
+    static byte ndx = 0;
+    char startMarker = '<';
+    char endMarker = '>';
+    char rc;
+
+    while (Serial.available() > 0 && newData == false) {
+        rc = Serial.read();
+
+        if (recvInProgress == true) {
+            if (rc != endMarker) {
+                receivedChars[ndx] = rc;
+                ndx++;
+                if (ndx >= numChars) {
+                    ndx = numChars - 1;
+                }
+            }
+            else {
+                receivedChars[ndx] = '\0'; // terminate the string
+                recvInProgress = false;
+                ndx = 0;
+                newData = true;
+            }
+        }
+
+        else if (rc == startMarker) {
+            recvInProgress = true;
+        }
+    }
+}
+
+void showNewData() {
+    if (newData == true) {
+        Serial.print("This just in ... ");
+        Serial.println(receivedChars);
+        newData = false;
+    }
+}
+		 * @param [name] [description]
+		 */
+
 
 		/***** G1 COMMAND ******/
 		// Send G1 X[pos as float] P[Kp as float] D[kd value as float] to command
@@ -185,7 +251,7 @@ void process_serial() {
 
     // Clear the buffer after the first byte is read.
     // So don't send multiple commands at once and expect any but the first to be executed
-    Serial.clear();
+    // Serial.clear();
   }
 }
 
@@ -258,7 +324,7 @@ void setup() {
   CANTransceiver.begin();
 
 	// Init Serial
-	Serial.begin(115200);
+	Serial.begin(computer_BAUDRATE);
   Serial.println("CAN Transmitter Initialized");
 	Serial.setTimeout(2); // 2 ms timeout
 
@@ -336,11 +402,11 @@ void stop_encoder_prints() {
 }
 
 /**
- * Print encoder readings if print_encoder_readings is true
+ * Print [millis] [encoder reading] if print_encoder_readings is true
  */
 void encoder_printing() {
 	if(print_encoder_readings) {
-		Serial.print(micros());
+		Serial.print(millis());
 		Serial.print(" ");
 		Serial.println(vesc1.read());
 	}
