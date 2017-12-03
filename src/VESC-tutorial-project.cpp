@@ -59,6 +59,8 @@ long running_timestamp;
 // Keep track of positio and gain targets
 struct vesc_pos_gain_command vesc_pos_gain_target = {0.0, 0.0, 0.0};
 
+/********** END GLOBAL VARIABLES ******/
+
 /********* CONSTANTS *********/
 
 // Send position commands at 500hz (1s / 2000us)
@@ -85,8 +87,7 @@ const int8_t VESC1_CHANNEL_ID = 0;
 const float VESC1_OFFSET = -108; // 108
 const int VESC1_DIRECTION = -1;
 
-/****************************/
-
+/******** END OF CONSTANTS ***********/
 
 /**
  * Call this function in the main loop if you want to see the normalized motor angles
@@ -136,67 +137,6 @@ void process_serial() {
 		// NOTE: message string variable will not include '\n' char
 		// TODO: change this code from blocking code to GOOD, nonblocking code
 		String message = Serial.readStringUntil('\n');
-
-		/**
-		 * // Example 3 - Receive with start- and end-markers
-
-const byte numChars = 32;
-char receivedChars[numChars];
-
-boolean newData = false;
-
-void setup() {
-    Serial.begin(9600);
-    Serial.println("<Arduino is ready>");
-}
-
-void loop() {
-    recvWithStartEndMarkers();
-    showNewData();
-}
-
-void recvWithStartEndMarkers() {
-    static boolean recvInProgress = false;
-    static byte ndx = 0;
-    char startMarker = '<';
-    char endMarker = '>';
-    char rc;
-
-    while (Serial.available() > 0 && newData == false) {
-        rc = Serial.read();
-
-        if (recvInProgress == true) {
-            if (rc != endMarker) {
-                receivedChars[ndx] = rc;
-                ndx++;
-                if (ndx >= numChars) {
-                    ndx = numChars - 1;
-                }
-            }
-            else {
-                receivedChars[ndx] = '\0'; // terminate the string
-                recvInProgress = false;
-                ndx = 0;
-                newData = true;
-            }
-        }
-
-        else if (rc == startMarker) {
-            recvInProgress = true;
-        }
-    }
-}
-
-void showNewData() {
-    if (newData == true) {
-        Serial.print("This just in ... ");
-        Serial.println(receivedChars);
-        newData = false;
-    }
-}
-		 * @param [name] [description]
-		 */
-
 
 		/***** G1 COMMAND ******/
 		// Send G1 X[pos as float] P[Kp as float] D[kd value as float] to command
@@ -372,7 +312,6 @@ void loop() {
     }
 }
 
-
 /****** APPLICATION CODE ******/
 
 void print_pos_gain_target() {
@@ -540,3 +479,63 @@ void impulse() {
     return;
   }
 }
+
+/** NON BLOCKING SERIAL
+ * // Example 3 - Receive with start- and end-markers
+
+const byte numChars = 32;
+char receivedChars[numChars];
+
+boolean newData = false;
+
+void setup() {
+Serial.begin(9600);
+Serial.println("<Arduino is ready>");
+}
+
+void loop() {
+recvWithStartEndMarkers();
+showNewData();
+}
+
+void recvWithStartEndMarkers() {
+static boolean recvInProgress = false;
+static byte ndx = 0;
+char startMarker = '<';
+char endMarker = '>';
+char rc;
+
+while (Serial.available() > 0 && newData == false) {
+		rc = Serial.read();
+
+		if (recvInProgress == true) {
+				if (rc != endMarker) {
+						receivedChars[ndx] = rc;
+						ndx++;
+						if (ndx >= numChars) {
+								ndx = numChars - 1;
+						}
+				}
+				else {
+						receivedChars[ndx] = '\0'; // terminate the string
+						recvInProgress = false;
+						ndx = 0;
+						newData = true;
+				}
+		}
+
+		else if (rc == startMarker) {
+				recvInProgress = true;
+		}
+}
+}
+
+void showNewData() {
+if (newData == true) {
+		Serial.print("This just in ... ");
+		Serial.println(receivedChars);
+		newData = false;
+}
+}
+ * @param [name] [description]
+ */

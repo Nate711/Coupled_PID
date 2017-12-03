@@ -7,12 +7,6 @@ private:
   // time derivatives
   bool first_loop = true;
 
-  // PID constants
-  float Kp,Ki,Kd;
-
-  // Constrains the output of the PID controller between -threshold and +threshold
-  float threshold;
-
   // stores last given error
   float last_error_deriv;
 
@@ -34,16 +28,16 @@ private:
 
 public:
   AngularPDController(float kp, float kd);
-  float compute_command(const float& error, const unsigned long& dt_micros);
+  float compute_command(const float& error, int dt_micros);
 
   float get_error();
   float get_error_deriv();
 
-  void get_command(float& command);
   float get_command();
+
   void get_error_terms(float& pterm, float& dterm);
-  float get_dterm();
-  float get_pterm();
+
+  void set_gains(float Kp, float Kd);
   void get_gains(float& Kp, float& Kd);
 };
 
