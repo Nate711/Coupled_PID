@@ -35,12 +35,12 @@ FlexCAN::FlexCAN(uint32_t baud, uint8_t id, uint8_t txAlt, uint8_t rxAlt)
 #if defined(__MK66FX1M0__) || defined(__MK64FX512__)
     //  3=PTA12=CAN0_TX,  4=PTA13=CAN0_RX (default)
     // 29=PTB18=CAN0_TX, 30=PTB19=CAN0_RX (alternative)
-    if(txAlt == 1) CORE_PIN29_CONFIG = PORT_PCR_MUX(2); else CORE_PIN3_CONFIG = PORT_PCR_MUX(2); 
-    if(rxAlt == 1) CORE_PIN30_CONFIG = PORT_PCR_MUX(2); else CORE_PIN4_CONFIG = PORT_PCR_MUX(2);// | PORT_PCR_PE | PORT_PCR_PS; 
-#else   
+    if(txAlt == 1) CORE_PIN29_CONFIG = PORT_PCR_MUX(2); else CORE_PIN3_CONFIG = PORT_PCR_MUX(2);
+    if(rxAlt == 1) CORE_PIN30_CONFIG = PORT_PCR_MUX(2); else CORE_PIN4_CONFIG = PORT_PCR_MUX(2);// | PORT_PCR_PE | PORT_PCR_PS;
+#else
     //  3=PTA12=CAN0_TX,  4=PTA13=CAN0_RX (default)
     // 32=PTB18=CAN0_TX, 25=PTB19=CAN0_RX (alternative)
-    if(txAlt == 1) CORE_PIN32_CONFIG = PORT_PCR_MUX(2); else CORE_PIN3_CONFIG = PORT_PCR_MUX(2); 
+    if(txAlt == 1) CORE_PIN32_CONFIG = PORT_PCR_MUX(2); else CORE_PIN3_CONFIG = PORT_PCR_MUX(2);
     if(rxAlt == 1) CORE_PIN25_CONFIG = PORT_PCR_MUX(2); else CORE_PIN4_CONFIG = PORT_PCR_MUX(2);// | PORT_PCR_PE | PORT_PCR_PS;
 #endif
   }
@@ -265,4 +265,3 @@ int FlexCAN::write(const CAN_message_t &msg)
 
   return 1;
 }
-

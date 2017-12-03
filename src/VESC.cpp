@@ -294,13 +294,13 @@ void VESC::print_debug() {
     Serial.print(" \tw: ");
     Serial.print(true_degps);
 		Serial.print(" \tKp: ");
-		Serial.print(pos_controller.get_pterm());
+    float pterm,dterm;
+    pos_controller.get_error_terms(pterm, dterm);
+		Serial.print(pterm);
 		Serial.print(" \tKd: ");
-		Serial.println(pos_controller.get_dterm());
+		Serial.println(dterm);
 	}
 }
-
-
 
 /***** OLD ONBOARD PID CODE *******/
 /**
