@@ -259,7 +259,6 @@ void VESC::update_angle(float angle) {
   // at different times then the VESC object will think the speed is 0
   time_last_angle_read = now_time;
 
-
   // Compute velocity in deg per s
   // This computation is subject to noise!
   // 37-38 us loop time
@@ -322,4 +321,13 @@ void VESC::pid_update(const float& set_point) {
 
   // FUCK EVERYTHINGGGGG COMPARING FLOATS DOESNT WORK
   _send_current(cur_command);
+}
+
+/**
+ * Update kP and kD for teensy-side PID control
+ * @param kP proportional gain
+ * @param kD derivative gain
+ */
+void VESC::update_pid_gains(float kP, float kD) {
+  pos_controller.set_gains(kP, kD);
 }

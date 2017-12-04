@@ -25,11 +25,6 @@
 
 class VESC {
 private:
-	// VESC position pid constants
-	float vesc_kp=0,vesc_ki=0,vesc_kd=0;
-	float pos=0;
-
-
   // Holds time in micros of the last time the object got an angle measurement
   // It's important that this time is consistent
 	long time_last_angle_read;
@@ -180,6 +175,13 @@ public:
 	 * Prints VESC object state
 	 */
   void print_debug();
+
+	/**
+	 * Update kP and kD for teensy-side PID control
+	 * @param kP proportional gain
+	 * @param kD derivative gain
+	 */
+	void update_pid_gains(float kP, float kD);
 };
 
 #endif
