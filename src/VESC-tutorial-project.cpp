@@ -237,6 +237,7 @@ void RUNNING_STATE() {
 		// encoder_printing();
 		// encoder_printing();
 		// send_vesc_target(vesc1, vesc_pos_gain_target);
+		vesc1.set_pid_gains(0.05,0.0005);
 		vesc1.pid_update(0.0);
 
 	}

@@ -181,7 +181,7 @@ public:
 	 * @param kP proportional gain
 	 * @param kD derivative gain
 	 */
-	void update_pid_gains(float kP, float kD);
+	void set_pid_gains(float kP, float kD);
 };
 
 #endif

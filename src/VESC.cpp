@@ -328,6 +328,6 @@ void VESC::pid_update(const float& set_point) {
  * @param kP proportional gain
  * @param kD derivative gain
  */
-void VESC::update_pid_gains(float kP, float kD) {
+void VESC::set_pid_gains(float kP, float kD) {
   pos_controller.set_gains(kP, kD);
 }
